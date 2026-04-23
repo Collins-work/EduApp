@@ -59,8 +59,20 @@ Add bot to group as a member, then use:
 - `/playcards`
 - `/playtrivia`
 - `/playstrategy`
+- `/chessgroup` (reply to a user message to challenge)
+- `/acceptchess`
+- `/move e2e4`
+- `/chessboard`
+- `/resign`
 - `/leaderboard`
 - `/gameleaderboard`
+
+Global matchmaking (private chat with bot):
+
+- `/globalchess`
+- `/leaveglobalchess`
+
+Note: Group multiplayer chess currently supports Telegram groups and supergroups. Telegram channels are not interactive enough for per-user turn commands.
 
 Admin-only commands (must match `ADMIN_ID`):
 

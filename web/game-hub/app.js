@@ -85,6 +85,13 @@ let activeGameId = "";
 let gameScore = 0;
 let selectedSquare = "";
 let chessState = null;
+let chessBotMoveTimer = null;
+let chessBotThinking = false;
+let chessResult = {
+    mode: "vs-bot",
+    outcome: "draw",
+    finished: false,
+};
 let cardsState = null;
 let triviaState = null;
 let strategyState = { econ: 5, defense: 5, tech: 5, budget: 15 };
@@ -92,6 +99,15 @@ let strategyTurn = 0;
 const cardById = new Map();
 let triviaTimer = null;
 let triviaDeadline = 0;
+
+const chessPieceValue = {
+    p: 1,
+    n: 3,
+    b: 3,
+    r: 5,
+    q: 9,
+    k: 100,
+};
 
 function setStatus(message) {
     statusText.textContent = message;
@@ -338,6 +354,39 @@ function chooseChessBotMove() {
     return bestMove;
 }
 
+function clearChessBotTimer() {
+    if (!chessBotMoveTimer) {
+        return;
+    }
+    clearTimeout(chessBotMoveTimer);
+    chessBotMoveTimer = null;
+}
+
+function scheduleChessBotMove() {
+    clearChessBotTimer();
+    chessBotThinking = true;
+    renderChessBoard();
+
+    const delayMs = randomInt(1200, 2600);
+    chessBotMoveTimer = setTimeout(() => {
+        chessBotMoveTimer = null;
+        if (!chessState || chessState.turn !== "b") {
+            chessBotThinking = false;
+            renderChessBoard();
+            return;
+        }
+
+        const botMove = chooseChessBotMove();
+        if (botMove) {
+            chessState.board = applyChessMove(chessState.board, botMove.from, botMove.to) || chessState.board;
+        }
+
+        chessState.turn = "w";
+        chessBotThinking = false;
+        renderChessBoard();
+    }, delayMs);
+}
+
 function chessStatusText() {
     const legalWhite = allLegalMoves(chessState.board, "w");
     const legalBlack = allLegalMoves(chessState.board, "b");
@@ -350,7 +399,10 @@ function chessStatusText() {
         return chessState.turn === "b" ? "No legal moves for Black." : "You have no legal moves.";
     }
 
-    return chessState.turn === "w" ? "Your move." : "Bot thinking...";
+    if (chessState.turn === "b") {
+        return chessBotThinking ? "Bot is thinking..." : "Bot is preparing a move...";
+    }
+    return "Your move.";
 }
 
 function renderChessBoard() {
@@ -413,20 +465,16 @@ function onSquareClick(square) {
     updateScoreInput();
 
     chessState.turn = "b";
-    const botMove = chooseChessBotMove();
-    if (botMove) {
-        chessState.board = applyChessMove(chessState.board, botMove.from, botMove.to) || chessState.board;
-    }
-
-    chessState.turn = "w";
-    renderChessBoard();
+    scheduleChessBotMove();
 }
 
 function startChessGame() {
+    clearChessBotTimer();
     chessState = {
         board: buildInitialChessBoard(),
         turn: "w",
     };
+    chessBotThinking = false;
     selectedSquare = "";
     gameScore = 0;
     updateScoreInput();
