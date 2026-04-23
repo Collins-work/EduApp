@@ -1,54 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Edu Mini App</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./style.css" />
-  </head>
-  <body>
-    <div class="bg-grid" aria-hidden="true"></div>
-    <main class="app-shell">
-      <section class="panel hero">
-        <p class="eyebrow">Telegram Mini App</p>
-        <h1>Flashcards + Quiz Arena</h1>
-        <p class="subtitle">Practice fast, submit scores to your group instantly.</p>
-      </section>
 
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edu Mini App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
+  <main class="app-shell">
+    <section class="panel hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Telegram Mini App</p>
+        <h1>Study decks that stay inside your bot.</h1>
+        <p class="subtitle">
+          Pull live cards from the bot when available, create your own items here, and send results
+          back to Telegram in one tap.
+        </p>
+      </div>
+
+      <div class="hero-meta">
+        <div class="stat-card accent">
+          <span class="stat-label">Content source</span>
+          <strong id="content-source">Demo fallback</strong>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <span class="stat-label">Flashcards</span>
+            <strong id="flashcard-count">0</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Quizzes</span>
+            <strong id="quiz-count">0</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="study-grid">
       <section class="panel card-panel">
-        <h2>Flashcards</h2>
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Flashcards</p>
+            <h2>Quick recall</h2>
+          </div>
+          <button id="next-card" class="btn btn-ghost btn-small">Next</button>
+        </div>
         <p id="flashcard-question" class="question"></p>
         <p id="flashcard-answer" class="answer hidden"></p>
         <div class="row">
-          <button id="next-card" class="btn btn-primary">Next Card</button>
-          <button id="show-answer" class="btn btn-ghost">Show Answer</button>
+          <button id="show-answer" class="btn btn-primary">Show answer</button>
         </div>
       </section>
 
       <section class="panel quiz-panel">
-        <h2>Quick Quiz</h2>
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Quiz</p>
+            <h2>Check your answer</h2>
+          </div>
+          <button id="new-quiz" class="btn btn-ghost btn-small">New question</button>
+        </div>
         <p id="quiz-question" class="question"></p>
         <div id="quiz-choices" class="choices"></div>
-        <input id="answer-input" class="input" placeholder="Type answer or choice letter" />
+        <input id="answer-input" class="input" placeholder="Type your answer or choice letter" />
         <div class="row">
-          <button id="submit-answer" class="btn btn-primary">Submit Answer</button>
-          <button id="new-quiz" class="btn btn-ghost">New Question</button>
+          <button id="submit-answer" class="btn btn-primary">Submit answer</button>
         </div>
         <p id="quiz-feedback" class="feedback"></p>
+        <p class="microcopy">
+          Quiz score stays local until you send it back to the bot.
+        </p>
       </section>
+    </section>
 
-      <section class="panel actions">
-        <button id="send-results" class="btn btn-accent">Send Score To Group</button>
-      </section>
-    </main>
+    <section class="panel create-panel">
+      <div class="create-column">
+        <div class="panel-head compact">
+          <div>
+            <p class="eyebrow">Create</p>
+            <h2>Add a flashcard</h2>
+          </div>
+        </div>
+        <label class="field">
+          <span>Question</span>
+          <input id="new-card-question" class="input" placeholder="What is ...?" />
+        </label>
+        <label class="field">
+          <span>Answer</span>
+          <input id="new-card-answer" class="input" placeholder="Write the answer" />
+        </label>
+        <button id="create-flashcard" class="btn btn-secondary">Save flashcard to bot</button>
+      </div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="./app.js"></script>
-  </body>
+      <div class="create-column">
+        <div class="panel-head compact">
+          <div>
+            <p class="eyebrow">Create</p>
+            <h2>Add a quiz</h2>
+          </div>
+        </div>
+        <label class="field">
+          <span>Question</span>
+          <input id="new-quiz-question" class="input" placeholder="Which planet ...?" />
+        </label>
+        <label class="field">
+          <span>Correct answer</span>
+          <input id="new-quiz-answer" class="input" placeholder="Correct answer" />
+        </label>
+        <label class="field">
+          <span>Optional synonyms</span>
+          <input id="new-quiz-synonyms" class="input" placeholder="Separate with semicolons" />
+        </label>
+        <button id="create-quiz" class="btn btn-secondary">Save quiz to bot</button>
+      </div>
+    </section>
+
+    <section class="panel actions">
+      <button id="send-results" class="btn btn-accent">Send quiz score to group</button>
+      <p id="mini-status" class="status"></p>
+    </section>
+  </main>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="./app.js"></script>
+</body>
+
 </html>

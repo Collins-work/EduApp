@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const http = require("http");
 const { Telegraf, Markup } = require("telegraf");
 const {
   addFlashcard,
@@ -26,6 +27,8 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_ID = Number(process.env.ADMIN_ID || 0);
 const EDU_APP_URL = process.env.EDU_APP_URL || "https://your-edu-app.vercel.app";
 const GAME_HUB_URL = process.env.GAME_HUB_URL || "https://your-game-hub.vercel.app";
+const EDU_APP_API_URL = process.env.EDU_APP_API_URL || "";
+const PORT = Number(process.env.PORT || 0);
 const NOTEBOOKLM_SOURCE_PATH = process.env.NOTEBOOKLM_SOURCE_PATH || "";
 
 if (!BOT_TOKEN) {
@@ -38,6 +41,7 @@ if (!ADMIN_ID) {
 
 const bot = new Telegraf(BOT_TOKEN);
 const pendingQuizByChat = new Map();
+const pendingQuizByUser = new Map();
 const pendingFlashcardByUser = new Map();
 
 function isAdmin(ctx) {
@@ -88,13 +92,32 @@ function formatFlashcardPrompt(question) {
   ].join("\n");
 }
 
+function formatQuizPromptForCreation(question) {
+  return [
+    `Quiz question saved: ${question}`,
+    "Now send the correct answer. You can add synonyms separated by semicolons if you want.",
+  ].join("\n");
+}
+
 function isPrivateChat(ctx) {
   return ctx.chat?.type === "private";
 }
 
+function getEduAppUrl() {
+  try {
+    const url = new URL(EDU_APP_URL);
+    if (EDU_APP_API_URL) {
+      url.searchParams.set("api", EDU_APP_API_URL);
+    }
+    return url.toString();
+  } catch (_error) {
+    return EDU_APP_URL;
+  }
+}
+
 function eduAppButtons() {
   return Markup.inlineKeyboard([
-    Markup.button.webApp("Open Edu Mini App", EDU_APP_URL),
+    Markup.button.webApp("Open Edu Mini App", getEduAppUrl()),
   ]);
 }
 
@@ -121,7 +144,7 @@ bot.start(async (ctx) => {
   await ctx.reply(
     "Edu Game Bot is ready for group learning and fun. Use /quiz, /flashcard, /playgame.",
     Markup.keyboard([
-      [Markup.button.webApp("Launch Edu Mini App", EDU_APP_URL)],
+      [Markup.button.webApp("Launch Edu Mini App", getEduAppUrl())],
       [Markup.button.webApp("Launch Game Hub", GAME_HUB_URL)],
     ]).resize(),
   );
@@ -140,13 +163,17 @@ bot.command("help", async (ctx) => {
       "",
       "Admin Commands:",
       "/addcard question|answer",
-      "/newcard - Create a flashcard in a private chat",
       "/addquiz question|answer",
       "/addgame name|url",
       "/removegame name",
       "/resetquiz",
       "/resetleaderboard",
+      "",
+      "Study Creation Commands:",
+      "/newcard - Create a flashcard in a private chat",
+      "/newquiz - Create a quiz in a private chat",
       "/cancelcard - Cancel a pending private flashcard",
+      "/cancelquiz - Cancel a pending private quiz",
     ].join("\n"),
   );
 });
@@ -180,7 +207,7 @@ bot.command("flashcard", async (ctx) => {
     Markup.inlineKeyboard([
       [Markup.button.callback("Show Answer", `show_answer|${picked.answer}`)],
       [Markup.button.callback("Next Card", "next_card")],
-      [Markup.button.webApp("Open Edu Mini App", EDU_APP_URL)],
+      [Markup.button.webApp("Open Edu Mini App", getEduAppUrl())],
     ]),
   );
 });
@@ -198,7 +225,7 @@ bot.action("next_card", async (ctx) => {
     Markup.inlineKeyboard([
       [Markup.button.callback("Show Answer", `show_answer|${picked.answer}`)],
       [Markup.button.callback("Next Card", "next_card")],
-      [Markup.button.webApp("Open Edu Mini App", EDU_APP_URL)],
+      [Markup.button.webApp("Open Edu Mini App", getEduAppUrl())],
     ]),
   );
   await ctx.answerCbQuery();
@@ -234,10 +261,6 @@ bot.command("addcard", async (ctx) => {
 });
 
 bot.command("newcard", async (ctx) => {
-  if (!requireAdmin(ctx)) {
-    return;
-  }
-
   if (!isPrivateChat(ctx)) {
     await ctx.reply("Please use /newcard in a private chat with the bot.");
     return;
@@ -250,14 +273,30 @@ bot.command("newcard", async (ctx) => {
   await ctx.reply("Send the flashcard question.");
 });
 
-bot.command("cancelcard", async (ctx) => {
-  if (!requireAdmin(ctx)) {
+bot.command("newquiz", async (ctx) => {
+  if (!isPrivateChat(ctx)) {
+    await ctx.reply("Please use /newquiz in a private chat with the bot.");
     return;
   }
 
+  pendingQuizByUser.set(ctx.from.id, {
+    stage: "question",
+  });
+
+  await ctx.reply("Send the quiz question.");
+});
+
+bot.command("cancelcard", async (ctx) => {
   const removed = pendingFlashcardByUser.delete(ctx.from.id);
   await ctx.reply(
     removed ? "Pending flashcard creation canceled." : "No pending flashcard creation found.",
+  );
+});
+
+bot.command("cancelquiz", async (ctx) => {
+  const removed = pendingQuizByUser.delete(ctx.from.id);
+  await ctx.reply(
+    removed ? "Pending quiz creation canceled." : "No pending quiz creation found.",
   );
 });
 
@@ -388,6 +427,35 @@ bot.on("message", async (ctx, next) => {
       const payload = JSON.parse(dataRaw);
       const safeType = payload.type || "unknown";
 
+      if (safeType === "create_flashcard") {
+        const question = String(payload.question || "").trim();
+        const answer = String(payload.answer || "").trim();
+
+        if (!question || !answer) {
+          await ctx.reply("Flashcard creation needs both a question and an answer.");
+          return;
+        }
+
+        const created = addFlashcard(question, answer);
+        await ctx.reply(`Flashcard added: ${created.question}`);
+        return;
+      }
+
+      if (safeType === "create_quiz") {
+        const question = String(payload.question || "").trim();
+        const answer = String(payload.answer || "").trim();
+        const synonyms = String(payload.synonyms || "").trim();
+
+        if (!question || !answer) {
+          await ctx.reply("Quiz creation needs both a question and an answer.");
+          return;
+        }
+
+        const created = addQuiz(question, [answer, synonyms].filter(Boolean).join(";"));
+        await ctx.reply(`Quiz added: ${created.question}`);
+        return;
+      }
+
       if (safeType === "quiz_result") {
         const score = Number(payload.score || 0);
         addScore(ctx.from, score);
@@ -439,6 +507,30 @@ bot.on("message", async (ctx, next) => {
     }
   }
 
+  const pendingQuiz = pendingQuizByUser.get(ctx.from?.id);
+  if (pendingQuiz && typeof text === "string" && !text.startsWith("/")) {
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      await ctx.reply("Please send a non-empty message.");
+      return;
+    }
+
+    if (pendingQuiz.stage === "question") {
+      pendingQuiz.question = trimmedText;
+      pendingQuiz.stage = "answer";
+      pendingQuizByUser.set(ctx.from.id, pendingQuiz);
+      await ctx.reply(formatQuizPromptForCreation(trimmedText));
+      return;
+    }
+
+    if (pendingQuiz.stage === "answer") {
+      const created = addQuiz(pendingQuiz.question, trimmedText);
+      pendingQuizByUser.delete(ctx.from.id);
+      await ctx.reply(`Quiz added: ${created.question}`);
+      return;
+    }
+  }
+
   if (typeof text === "string" && !text.startsWith("/")) {
     const active = pendingQuizByChat.get(ctx.chat.id);
     if (!active) {
@@ -463,20 +555,82 @@ bot.on("message", async (ctx, next) => {
   await next();
 });
 
+function startContentServer() {
+  if (!PORT) {
+    return null;
+  }
+
+  const server = http.createServer((req, res) => {
+    const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (requestUrl.pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+
+    if (requestUrl.pathname === "/api/edu-content") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          flashcards: listFlashcards(),
+          quizzes: listQuizzes(),
+        }),
+      );
+      return;
+    }
+
+    if (requestUrl.pathname === "/api/flashcards") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ flashcards: listFlashcards() }));
+      return;
+    }
+
+    if (requestUrl.pathname === "/api/quizzes") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ quizzes: listQuizzes() }));
+      return;
+    }
+
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Not found" }));
+  });
+
+  server.listen(PORT, () => {
+    console.log(`Content API listening on port ${PORT}.`);
+  });
+
+  return server;
+}
+
 bot.catch((error, ctx) => {
   console.error("Bot error", error, "in update", ctx.updateType);
 });
 
 (async () => {
+  startContentServer();
+
   await bot.telegram.setMyCommands([
     { command: "quiz", description: "Ask quiz question" },
     { command: "flashcard", description: "Show flashcard" },
     { command: "newcard", description: "Create flashcard in private chat" },
+    { command: "newquiz", description: "Create quiz in private chat" },
     { command: "playgame", description: "Open game hub" },
     { command: "leaderboard", description: "Quiz leaderboard" },
     { command: "gameleaderboard", description: "Game leaderboard" },
     { command: "syncstudy", description: "Sync study source file" },
     { command: "cancelcard", description: "Cancel flashcard creation" },
+    { command: "cancelquiz", description: "Cancel quiz creation" },
     { command: "help", description: "Show all commands" },
   ]);
 
@@ -484,7 +638,7 @@ bot.catch((error, ctx) => {
     menu_button: {
       type: "web_app",
       text: "Open Edu App",
-      web_app: { url: EDU_APP_URL },
+      web_app: { url: getEduAppUrl() },
     },
   });
 

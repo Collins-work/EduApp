@@ -23,9 +23,11 @@ Required environment values in `.env`:
 - `BOT_TOKEN` from BotFather
 - `ADMIN_ID` Telegram numeric user ID with admin privileges in bot logic
 - `EDU_APP_URL` HTTPS URL for `web/edu-app`
+- `EDU_APP_API_URL` public HTTPS URL for the bot content API, for example `https://your-bot-host.example.com`
 - `GAME_HUB_URL` HTTPS URL for `web/game-hub`
 - `NOTEBOOKLM_SOURCE_PATH` local path to a NotebookLM export, Google Docs text export, or Markdown file containing study cards
 - `NOTEBOOKLM_SOURCE_URL` optional placeholder if you want to keep the original source URL in your config
+- `PORT` optional HTTP port for the bot content API when the bot host expects one
 
 ## 2) Deploy Frontends (Vercel)
 
@@ -63,24 +65,32 @@ Add bot to group as a member, then use:
 Admin-only commands (must match `ADMIN_ID`):
 
 - `/addcard question|answer`
-- `/newcard` in a private chat to create a flashcard step-by-step
 - `/addquiz question|answer`
 - `/resetquiz`
 - `/addgame name|url`
 - `/removegame name`
 - `/resetleaderboard`
-- `/cancelcard` to stop a pending private flashcard setup
 
-Flashcards created this way are saved to `bot/data/flashcards.json`, so `/flashcard` in group chat will use them immediately.
+Study creation commands available in private chat:
+
+- `/newcard` to create a flashcard step-by-step
+- `/newquiz` to create a quiz step-by-step
+- `/cancelcard` to stop a pending flashcard setup
+- `/cancelquiz` to stop a pending quiz setup
+
+Flashcards and quizzes created this way are saved to `bot/data/flashcards.json` and `bot/data/quizzes.json`, so `/flashcard` and `/quiz` in group chat will use them immediately.
 
 ## 5) Mini App Result Flow
 
 Both frontends call `Telegram.WebApp.sendData(...)`:
 
 - Edu app sends `{"type":"quiz_result","score":number}`
+- Edu app can also send `{"type":"create_flashcard",...}` and `{"type":"create_quiz",...}` from the creation forms
 - Game hub sends `{"type":"game_result","score":number}`
 
 Bot receives this as `web_app_data` and posts leaderboard updates back to chat.
+
+The Edu app can also load live flashcards and quizzes from the bot API when `EDU_APP_API_URL` is set. If that URL is missing or unreachable, it falls back to bundled demo content.
 
 ## 6) Optional Content Import
 
