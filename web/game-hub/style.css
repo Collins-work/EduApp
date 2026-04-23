@@ -116,6 +116,14 @@ h1 {
   background: rgba(15, 34, 51, 0.7);
 }
 
+.game-stage {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(15, 34, 51, 0.7);
+  min-height: 180px;
+}
+
 .round-label {
   margin: 0;
   font-size: 12px;
@@ -158,12 +166,114 @@ h1 {
 
 .play-actions {
   margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .btn.secondary {
   background: #12324a;
   color: var(--text);
   border-color: var(--line);
+}
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.cards-board {
+  display: grid;
+  gap: 10px;
+}
+
+.hand-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0e1e2d;
+  min-height: 82px;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.mini-card.dim {
+  color: var(--muted);
+}
+
+.memory-board {
+  display: grid;
+  gap: 10px;
+}
+
+.memory-seq,
+.memory-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.dot.r {
+  background: #ff6b6b;
+}
+
+.dot.g {
+  background: #43d17a;
+}
+
+.dot.b {
+  background: #4d9fff;
+}
+
+.dot.y {
+  background: #f7c64b;
+}
+
+.dot-btn {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+}
+
+.strategy-board {
+  display: grid;
+  gap: 10px;
+}
+
+.alloc {
+  display: grid;
+  gap: 6px;
+}
+
+.alloc label {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.alloc input[type="range"] {
+  width: 100%;
+}
+
+.budget {
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 input,
@@ -242,6 +352,10 @@ body.game-mode .hub {
 
 @media (max-width: 700px) {
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .play-actions {
     grid-template-columns: 1fr;
   }
 }

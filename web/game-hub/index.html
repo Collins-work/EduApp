@@ -29,15 +29,13 @@
             <h2 id="active-game-title">Choose a game</h2>
             <p id="active-game-description" class="muted">Select any card above to play inside Telegram.</p>
 
-            <div class="question-box">
-                <p id="round-label" class="round-label">Round not started</p>
-                <p id="game-prompt" class="prompt">Tap a game card to begin.</p>
+            <div id="game-stage" class="game-stage">
+                <p class="muted">Tap a game card to begin.</p>
             </div>
 
-            <div id="game-options" class="options"></div>
-
             <div class="play-actions">
-                <button id="next-round" class="btn secondary">Next Round</button>
+                <button id="action-primary" class="btn secondary">Start</button>
+                <button id="action-secondary" class="btn ghost">Reset</button>
             </div>
         </section>
 

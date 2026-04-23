@@ -5,94 +5,16 @@ if (tg) {
 }
 
 const games = [
-    {
-        id: "chess",
-        title: "Chess Rush",
-        description: "Play a full board game against a bot right inside Telegram.",
-    },
-    {
-        id: "cards",
-        title: "Cards Sprint",
-        description: "Spot the strongest hand quickly.",
-    },
-    {
-        id: "trivia",
-        title: "Trivia Battle",
-        description: "Pick the correct answer under pressure.",
-    },
-    {
-        id: "strategy",
-        title: "Strategy Builder",
-        description: "Choose the best resource move.",
-    },
+    { id: "chess", title: "Chess Rush", description: "Play a full board game against a bot right inside Telegram." },
+    { id: "cards", title: "Cards Sprint", description: "Deal quick hands and beat the bot in-card totals." },
+    { id: "trivia", title: "Trivia Reflex", description: "Memorize a color sequence and replay it." },
+    { id: "strategy", title: "Strategy Builder", description: "Split budget across economy, defense, and tech." },
 ];
 
-const roundsByGame = {
-    cards: [
-        {
-            prompt: "Which poker hand ranks highest?",
-            options: ["Straight", "Three of a kind", "Flush", "Full house"],
-            correctIndex: 3,
-            points: 5,
-            explain: "Full house outranks a flush and straight.",
-        },
-        {
-            prompt: "Quick count: your cards are 9, 7, and 5. Total?",
-            options: ["19", "20", "21", "22"],
-            correctIndex: 2,
-            points: 4,
-            explain: "9 + 7 + 5 = 21.",
-        },
-    ],
-    trivia: [
-        {
-            prompt: "Which planet is called the Red Planet?",
-            options: ["Venus", "Mars", "Jupiter", "Mercury"],
-            correctIndex: 1,
-            points: 4,
-            explain: "Mars is known as the Red Planet.",
-        },
-        {
-            prompt: "What is the capital of France?",
-            options: ["Paris", "Lyon", "Marseille", "Nice"],
-            correctIndex: 0,
-            points: 4,
-            explain: "Paris is the capital city of France.",
-        },
-    ],
-    strategy: [
-        {
-            prompt: "You have 10 resources. Best split for growth + defense?",
-            options: ["10 offense, 0 economy", "8 economy, 2 defense", "5 economy, 5 defense", "0 economy, 10 defense"],
-            correctIndex: 2,
-            points: 5,
-            explain: "Balanced investment usually survives while scaling.",
-        },
-        {
-            prompt: "Enemy is stronger now. Best short-term decision?",
-            options: ["All-out attack", "Scout then defend", "Ignore and expand", "Sell all defense"],
-            correctIndex: 1,
-            points: 5,
-            explain: "Scouting plus defense keeps options open.",
-        },
-    ],
-};
-
 const pieceMap = {
-    wp: "♙",
-    wn: "♘",
-    wb: "♗",
-    wr: "♖",
-    wq: "♕",
-    wk: "♔",
-    bp: "♟",
-    bn: "♞",
-    bb: "♝",
-    br: "♜",
-    bq: "♛",
-    bk: "♚",
+    wp: "♙", wn: "♘", wb: "♗", wr: "♖", wq: "♕", wk: "♔",
+    bp: "♟", bn: "♞", bb: "♝", br: "♜", bq: "♛", bk: "♚",
 };
-
 const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 const params = new URLSearchParams(window.location.search);
@@ -104,70 +26,23 @@ const submitBtn = document.getElementById("submit-game-score");
 const statusText = document.getElementById("status");
 const activeGameTitle = document.getElementById("active-game-title");
 const activeGameDescription = document.getElementById("active-game-description");
-const roundLabel = document.getElementById("round-label");
-const gamePrompt = document.getElementById("game-prompt");
-const optionsRoot = document.getElementById("game-options");
-const nextRoundBtn = document.getElementById("next-round");
+const gameStage = document.getElementById("game-stage");
+const actionPrimary = document.getElementById("action-primary");
+const actionSecondary = document.getElementById("action-secondary");
 const playPanel = document.querySelector(".play-panel");
 const chessPanel = document.getElementById("chess-panel");
 const chessBoardEl = document.getElementById("chess-board");
 const newChessGameBtn = document.getElementById("new-chess-game");
 
 let activeGameId = "";
-let roundIndex = 0;
 let gameScore = 0;
-let lockedRound = false;
 let chess = null;
 let selectedSquare = "";
-let chessReady = false;
 const cardById = new Map();
 
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const existing = document.querySelector(`script[src="${src}"]`);
-        if (existing) {
-            if (typeof window.Chess === "function") {
-                resolve();
-                return;
-            }
-
-            existing.addEventListener("load", () => resolve(), { once: true });
-            existing.addEventListener("error", () => reject(new Error(`Failed script: ${src}`)), { once: true });
-            return;
-        }
-
-        const script = document.createElement("script");
-        script.src = src;
-        script.async = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed script: ${src}`));
-        document.head.appendChild(script);
-    });
-}
-
-async function ensureChessEngine() {
-    if (typeof window.Chess === "function") {
-        return true;
-    }
-
-    const candidates = [
-        "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/chess.min.js",
-        "https://unpkg.com/chess.js@1.4.0/dist/chess.min.js",
-    ];
-
-    for (const src of candidates) {
-        try {
-            await loadScript(src);
-            if (typeof window.Chess === "function") {
-                return true;
-            }
-        } catch (_error) {
-            // Try next CDN.
-        }
-    }
-
-    return false;
-}
+let memorySeq = [];
+let memoryInput = [];
+let strategyState = { econ: 5, defense: 5, tech: 5, budget: 15 };
 
 function setStatus(message) {
     statusText.textContent = message;
@@ -177,17 +52,8 @@ function updateScoreInput() {
     scoreInput.value = String(gameScore);
 }
 
-function getRoundPool(gameId) {
-    return roundsByGame[gameId] || [];
-}
-
-function getCurrentRound() {
-    const pool = getRoundPool(activeGameId);
-    if (!pool.length) {
-        return null;
-    }
-
-    return pool[roundIndex % pool.length];
+function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function squareColor(fileIndex, rankIndex) {
@@ -199,27 +65,23 @@ function makeSquare(fileIndex, rankIndex) {
 }
 
 function renderChessBoard() {
-    if (!chessBoardEl || !chess) {
+    if (!chess || !chessBoardEl) {
         return;
     }
 
     chessBoardEl.innerHTML = "";
-
     for (let rank = 0; rank < 8; rank += 1) {
         for (let file = 0; file < 8; file += 1) {
             const square = makeSquare(file, rank);
             const piece = chess.get(square);
             const key = piece ? `${piece.color}${piece.type}` : "";
-
             const button = document.createElement("button");
             button.type = "button";
             button.className = `sq ${squareColor(file, rank)}`;
             if (selectedSquare === square) {
                 button.classList.add("selected");
             }
-            button.dataset.square = square;
             button.textContent = key ? pieceMap[key] : "";
-
             button.addEventListener("click", () => onSquareClick(square));
             chessBoardEl.appendChild(button);
         }
@@ -240,37 +102,12 @@ function playBotMove() {
     chess.move({ from: picked.from, to: picked.to, promotion: "q" });
 }
 
-function endStateMessage() {
-    if (!chess) {
-        return "";
-    }
-
-    if (chess.isCheckmate()) {
-        return chess.turn() === "w" ? "Checkmate. Bot wins." : "Checkmate. You win!";
-    }
-
-    if (chess.isStalemate()) {
-        return "Draw by stalemate.";
-    }
-
-    if (chess.isDraw()) {
-        return "Draw.";
-    }
-
-    if (chess.isCheck()) {
-        return chess.turn() === "w" ? "Your king is in check." : "Bot is in check.";
-    }
-
-    return "";
-}
-
 function onSquareClick(square) {
     if (!chess || chess.turn() !== "w" || chess.isGameOver()) {
         return;
     }
 
     const piece = chess.get(square);
-
     if (!selectedSquare) {
         if (piece && piece.color === "w") {
             selectedSquare = square;
@@ -286,35 +123,23 @@ function onSquareClick(square) {
     }
 
     const attempted = chess.move({ from: selectedSquare, to: square, promotion: "q" });
-
     if (!attempted) {
-        if (piece && piece.color === "w") {
-            selectedSquare = square;
-        } else {
-            selectedSquare = "";
-        }
+        selectedSquare = piece && piece.color === "w" ? square : "";
         renderChessBoard();
         return;
     }
 
     selectedSquare = "";
-    gameScore += 1;
-    if (attempted.captured) {
-        gameScore += 2;
-    }
+    gameScore += attempted.captured ? 3 : 1;
     updateScoreInput();
-
     playBotMove();
     renderChessBoard();
-
-    const summary = endStateMessage() || "Move made. Keep playing.";
-    setStatus(summary);
+    setStatus("Chess move made.");
 }
 
-async function startChessGame() {
-    chessReady = await ensureChessEngine();
-    if (!chessReady || typeof window.Chess !== "function") {
-        setStatus("Chess engine failed to load in Telegram WebView. Try re-opening the mini app.");
+function startChessGame() {
+    if (typeof window.Chess !== "function") {
+        setStatus("Chess engine failed to load. Re-open mini app.");
         return false;
     }
 
@@ -323,54 +148,171 @@ async function startChessGame() {
     gameScore = 0;
     updateScoreInput();
     renderChessBoard();
-    setStatus("Chess started. You play White.");
+    setStatus("Chess started. You are White.");
     return true;
 }
 
-function renderRound() {
-    const round = getCurrentRound();
-    optionsRoot.innerHTML = "";
+function suit() {
+    return ["♠", "♥", "♦", "♣"][randomInt(0, 3)];
+}
 
-    if (!round) {
-        roundLabel.textContent = "Round unavailable";
-        gamePrompt.textContent = "This game has no configured rounds yet.";
-        return;
+function rankLabel(value) {
+    if (value === 1) return "A";
+    if (value === 11) return "J";
+    if (value === 12) return "Q";
+    if (value === 13) return "K";
+    return String(value);
+}
+
+function makeHand() {
+    return Array.from({ length: 3 }, () => ({ value: randomInt(1, 13), suit: suit() }));
+}
+
+function renderCardsBoard(userHand, botHand) {
+    const userSum = userHand.reduce((sum, c) => sum + c.value, 0);
+    const botSum = botHand.reduce((sum, c) => sum + c.value, 0);
+
+    gameStage.innerHTML = `
+    <div class="cards-board">
+      <p class="muted">Your hand</p>
+      <div class="hand-row">${userHand.map((c) => `<div class="mini-card">${rankLabel(c.value)}${c.suit}</div>`).join("")}</div>
+      <p class="muted">Bot hand</p>
+      <div class="hand-row">${botHand.map((c) => `<div class="mini-card dim">${rankLabel(c.value)}${c.suit}</div>`).join("")}</div>
+      <p class="muted">You: ${userSum} vs Bot: ${botSum}</p>
+    </div>
+  `;
+
+    if (userSum > botSum) {
+        gameScore += 5;
+        setStatus("You win the hand. +5 points.");
+    } else if (userSum === botSum) {
+        gameScore += 2;
+        setStatus("Draw hand. +2 points.");
+    } else {
+        setStatus("Bot wins this hand.");
+    }
+    updateScoreInput();
+}
+
+function startCardsRound() {
+    const userHand = makeHand();
+    const botHand = makeHand();
+    renderCardsBoard(userHand, botHand);
+}
+
+function randomSeq(length = 4) {
+    const keys = ["r", "g", "b", "y"];
+    return Array.from({ length }, () => keys[randomInt(0, keys.length - 1)]);
+}
+
+function renderMemoryBoard(showSequence) {
+    gameStage.innerHTML = `
+    <div class="memory-board">
+      <p class="muted">Memorize and replay the color sequence.</p>
+      <div id="memory-seq" class="memory-seq"></div>
+      <div id="memory-input" class="memory-input"></div>
+    </div>
+  `;
+
+    const seqRoot = document.getElementById("memory-seq");
+    const inputRoot = document.getElementById("memory-input");
+
+    if (showSequence) {
+        memorySeq.forEach((key) => {
+            const dot = document.createElement("div");
+            dot.className = `dot ${key}`;
+            seqRoot.appendChild(dot);
+        });
+    } else {
+        seqRoot.innerHTML = '<p class="muted">Sequence hidden. Tap colors below.</p>';
     }
 
-    roundLabel.textContent = `Round ${roundIndex + 1}`;
-    gamePrompt.textContent = round.prompt;
-    lockedRound = false;
-
-    round.options.forEach((option, index) => {
-        const button = document.createElement("button");
-        button.className = "option-btn";
-        button.textContent = option;
-
-        button.addEventListener("click", () => {
-            if (lockedRound) {
-                return;
-            }
-
-            lockedRound = true;
-            const correct = index === round.correctIndex;
-
-            if (correct) {
-                button.classList.add("correct");
-                gameScore += round.points;
-                updateScoreInput();
-                setStatus(`Correct. +${round.points} points. ${round.explain}`);
-            } else {
-                button.classList.add("wrong");
-                const allButtons = optionsRoot.querySelectorAll(".option-btn");
-                if (allButtons[round.correctIndex]) {
-                    allButtons[round.correctIndex].classList.add("correct");
+    ["r", "g", "b", "y"].forEach((key) => {
+        const btn = document.createElement("button");
+        btn.className = `dot-btn dot ${key}`;
+        btn.addEventListener("click", () => {
+            memoryInput.push(key);
+            if (memoryInput.length === memorySeq.length) {
+                const ok = memoryInput.every((v, i) => v === memorySeq[i]);
+                if (ok) {
+                    gameScore += 6;
+                    setStatus("Correct sequence. +6 points.");
+                } else {
+                    setStatus("Wrong sequence. Try again.");
                 }
-                setStatus(`Not correct. ${round.explain}`);
+                updateScoreInput();
             }
         });
-
-        optionsRoot.appendChild(button);
+        inputRoot.appendChild(btn);
     });
+}
+
+function startTriviaRound() {
+    memorySeq = randomSeq(4);
+    memoryInput = [];
+    renderMemoryBoard(true);
+    setStatus("Memorize now...");
+    setTimeout(() => {
+        renderMemoryBoard(false);
+        setStatus("Now replay the sequence.");
+    }, 1500);
+}
+
+function clampStrategy() {
+    const total = strategyState.econ + strategyState.defense + strategyState.tech;
+    if (total <= strategyState.budget) {
+        return;
+    }
+    const overflow = total - strategyState.budget;
+    strategyState.tech = Math.max(0, strategyState.tech - overflow);
+}
+
+function renderStrategyBoard() {
+    gameStage.innerHTML = `
+    <div class="strategy-board">
+      <p class="budget">Budget: ${strategyState.budget} points</p>
+      <div class="alloc">
+        <label>Economy: <span id="econ-val">${strategyState.econ}</span></label>
+        <input id="econ" type="range" min="0" max="15" value="${strategyState.econ}" />
+      </div>
+      <div class="alloc">
+        <label>Defense: <span id="def-val">${strategyState.defense}</span></label>
+        <input id="def" type="range" min="0" max="15" value="${strategyState.defense}" />
+      </div>
+      <div class="alloc">
+        <label>Tech: <span id="tech-val">${strategyState.tech}</span></label>
+        <input id="tech" type="range" min="0" max="15" value="${strategyState.tech}" />
+      </div>
+    </div>
+  `;
+
+    const econ = document.getElementById("econ");
+    const def = document.getElementById("def");
+    const tech = document.getElementById("tech");
+
+    function syncValues() {
+        strategyState.econ = Number(econ.value);
+        strategyState.defense = Number(def.value);
+        strategyState.tech = Number(tech.value);
+        clampStrategy();
+        econ.value = String(strategyState.econ);
+        def.value = String(strategyState.defense);
+        tech.value = String(strategyState.tech);
+        document.getElementById("econ-val").textContent = String(strategyState.econ);
+        document.getElementById("def-val").textContent = String(strategyState.defense);
+        document.getElementById("tech-val").textContent = String(strategyState.tech);
+    }
+
+    [econ, def, tech].forEach((el) => el.addEventListener("input", syncValues));
+}
+
+function runStrategyTurn() {
+    const eventBonus = randomInt(-2, 3);
+    const turnScore = strategyState.econ * 0.4 + strategyState.defense * 0.35 + strategyState.tech * 0.45 + eventBonus;
+    const gained = Math.max(0, Math.round(turnScore));
+    gameScore += gained;
+    updateScoreInput();
+    setStatus(`Turn completed. +${gained} points.`);
 }
 
 function markActiveCard() {
@@ -383,34 +325,82 @@ function setModeForGame() {
     const isChess = activeGameId === "chess";
     playPanel.classList.toggle("hidden", isChess);
     chessPanel.classList.toggle("hidden", !isChess);
-
     if (requestedGameId) {
         document.body.classList.add("game-mode");
     }
 }
 
-async function selectGame(gameId) {
-    const selected = games.find((game) => game.id === gameId);
+function configureActions() {
+    if (activeGameId === "cards") {
+        actionPrimary.textContent = "Deal Hand";
+        actionSecondary.textContent = "Clear";
+        actionPrimary.onclick = startCardsRound;
+        actionSecondary.onclick = () => {
+            gameStage.innerHTML = "";
+            setStatus("Cards board cleared.");
+        };
+        return;
+    }
+
+    if (activeGameId === "trivia") {
+        actionPrimary.textContent = "Start Sequence";
+        actionSecondary.textContent = "Reset";
+        actionPrimary.onclick = startTriviaRound;
+        actionSecondary.onclick = () => {
+            memorySeq = [];
+            memoryInput = [];
+            gameStage.innerHTML = "";
+            setStatus("Sequence reset.");
+        };
+        return;
+    }
+
+    if (activeGameId === "strategy") {
+        actionPrimary.textContent = "Run Turn";
+        actionSecondary.textContent = "Reset Plan";
+        actionPrimary.onclick = runStrategyTurn;
+        actionSecondary.onclick = () => {
+            strategyState = { econ: 5, defense: 5, tech: 5, budget: 15 };
+            renderStrategyBoard();
+            setStatus("Allocation reset.");
+        };
+        return;
+    }
+
+    actionPrimary.textContent = "Start";
+    actionSecondary.textContent = "Reset";
+    actionPrimary.onclick = null;
+    actionSecondary.onclick = null;
+}
+
+function selectGame(gameId) {
+    const selected = games.find((g) => g.id === gameId);
     if (!selected) {
         return false;
     }
 
     activeGameId = selected.id;
-    roundIndex = 0;
     gameScore = 0;
     updateScoreInput();
-
     activeGameTitle.textContent = selected.title;
     activeGameDescription.textContent = selected.description;
-
-    setModeForGame();
     markActiveCard();
+    setModeForGame();
 
-    if (selected.id === "chess") {
+    if (activeGameId === "chess") {
         return startChessGame();
     }
 
-    renderRound();
+    configureActions();
+    if (activeGameId === "cards") {
+        startCardsRound();
+    } else if (activeGameId === "trivia") {
+        startTriviaRound();
+    } else if (activeGameId === "strategy") {
+        renderStrategyBoard();
+        setStatus("Adjust sliders, then run turn.");
+    }
+
     return true;
 }
 
@@ -419,38 +409,23 @@ function buildGameCards() {
         const card = document.createElement("article");
         card.className = "card";
         card.style.animationDelay = `${index * 60}ms`;
-
         card.innerHTML = `
       <h2>${game.title}</h2>
       <p>${game.description}</p>
       <button class="btn">Play In Telegram</button>
     `;
-
         card.querySelector("button").addEventListener("click", () => {
-            void selectGame(game.id);
+            selectGame(game.id);
         });
         listRoot.appendChild(card);
         cardById.set(game.id, card);
     });
 }
 
-nextRoundBtn.addEventListener("click", () => {
-    if (!activeGameId || activeGameId === "chess") {
-        setStatus("Choose a non-chess game first.");
-        return;
-    }
-
-    roundIndex += 1;
-    renderRound();
-    setStatus("New round ready.");
-});
-
 newChessGameBtn.addEventListener("click", () => {
-    if (activeGameId !== "chess") {
-        return;
+    if (activeGameId === "chess") {
+        startChessGame();
     }
-
-    void startChessGame();
 });
 
 submitBtn.addEventListener("click", () => {
@@ -472,12 +447,11 @@ submitBtn.addEventListener("click", () => {
 });
 
 buildGameCards();
-if (requestedGameId && games.some((game) => game.id === requestedGameId)) {
-    void selectGame(requestedGameId).then((ok) => {
-        if (ok) {
-            setStatus(`Loaded ${requestedGameId} from bot command.`);
-        }
-    });
+if (requestedGameId && games.some((g) => g.id === requestedGameId)) {
+    const ok = selectGame(requestedGameId);
+    if (ok) {
+        setStatus(`Loaded ${requestedGameId} from bot command.`);
+    }
 } else {
-    setStatus("Select a game card to start playing.");
+    setStatus("Select a game card to start.");
 }
