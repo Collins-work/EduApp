@@ -184,7 +184,18 @@ function gameListKeyboard() {
 
 bot.start(async (ctx) => {
   await ctx.reply(
-    "Edu Game Bot is ready for group learning and fun. Use /quiz, /flashcard, /playgame.",
+    [
+      "Welcome to Edu Game Bot.",
+      "",
+      "I am here to make learning fun, simple, and interactive for your group.",
+      "",
+      "Try one of these commands:",
+      "/quiz - Get a quick quiz challenge",
+      "/flashcard - Review a smart flashcard",
+      "/playgame - Open the game dashboard",
+      "",
+      "If you need help anytime, use /help.",
+    ].join("\n"),
     Markup.keyboard([
       [Markup.button.webApp("Launch Edu Mini App", getEduAppUrl())],
       [Markup.button.webApp("Launch Game Hub", getGameHubUrl())],
