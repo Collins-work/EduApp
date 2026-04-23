@@ -692,10 +692,13 @@ newChessGameBtn.addEventListener("click", () => {
 
 submitBtn.addEventListener("click", () => {
     const score = Number(scoreInput.value || 0);
+    const isChess = activeGameId === "chess";
     const payload = {
         type: "game_result",
         game: activeGameId || "unknown",
-        score,
+        mode: isChess ? "vs-bot" : "mini-app",
+        score: isChess ? 0 : score,
+        outcome: isChess ? chessResult.outcome : "draw",
         sentAt: new Date().toISOString(),
     };
 

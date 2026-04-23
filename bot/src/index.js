@@ -225,15 +225,12 @@ function endChessMatch(matchId) {
 }
 
 function chessActionKeyboard(match) {
-  const rows = [];
-  if (match.mode === "group") {
-    rows.push([
+  const rows = [
+    [
       Markup.button.callback("Refresh Board", `chess_refresh|${match.id}`),
       Markup.button.callback("Resign", `chess_resign|${match.id}`),
-    ]);
-  } else {
-    rows.push([Markup.button.callback("Refresh Board", `chess_refresh|${match.id}`)]);
-  }
+    ],
+  ];
   return Markup.inlineKeyboard(rows);
 }
 

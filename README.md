@@ -74,6 +74,26 @@ Global matchmaking (private chat with bot):
 
 Note: Group multiplayer chess currently supports Telegram groups and supergroups. Telegram channels are not interactive enough for per-user turn commands.
 
+Multiplayer chess now uses full chess rules through `chess.js`, including:
+
+- legal-move validation with check/checkmate
+- castling
+- en passant
+- promotion (auto-queen)
+- draw detection (stalemate, insufficient material, repetition)
+
+Multiplayer state is persisted in:
+
+- `bot/data/chessMultiplayer.json`
+
+So active queue/matches survive bot restarts.
+
+Inline chess buttons are available for:
+
+- Accept Challenge
+- Refresh Board
+- Resign
+
 Admin-only commands (must match `ADMIN_ID`):
 
 - `/addcard question|answer`
@@ -99,8 +119,15 @@ Both frontends call `Telegram.WebApp.sendData(...)`:
 - Edu app sends `{"type":"quiz_result","score":number}`
 - Edu app can also send `{"type":"create_flashcard",...}` and `{"type":"create_quiz",...}` from the creation forms
 - Game hub sends `{"type":"game_result","score":number}`
+	- Non-chess games submit points mode with game and score
+	- Chess submits win/loss/draw outcome mode
 
 Bot receives this as `web_app_data` and posts leaderboard updates back to chat.
+
+Game leaderboard is now separated by game and mode:
+
+- points-based games keep point totals
+- chess tracks W/L/D records per mode (for example `vs-bot`, `group`, `global`)
 
 The Edu app can also load live flashcards and quizzes from the bot API when `EDU_APP_API_URL` is set. If that URL is missing or unreachable, it falls back to bundled demo content.
 
