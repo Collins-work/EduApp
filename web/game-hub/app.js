@@ -125,45 +125,8 @@ function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
 }
 
-function buildInitialChessBoard() {
-    const board = {};
-    const backRank = ["r", "n", "b", "q", "k", "b", "n", "r"];
-
-    files.forEach((file, index) => {
-        board[`${file}2`] = { c: "w", t: "p" };
-        board[`${file}7`] = { c: "b", t: "p" };
-        board[`${file}1`] = { c: "w", t: backRank[index] };
-        board[`${file}8`] = { c: "b", t: backRank[index] };
-    });
-
-    return board;
-}
-
-function cloneChessBoard(board) {
-    const copy = {};
-    Object.keys(board).forEach((square) => {
-        copy[square] = { ...board[square] };
-    });
-    return copy;
-}
-
-function chessPieceAt(square) {
-    return chessState?.board[square] || null;
-}
-
-function isInside(fileIndex, rankIndex) {
-    return fileIndex >= 0 && fileIndex < 8 && rankIndex >= 0 && rankIndex < 8;
-}
-
-function squareToCoords(square) {
-    return {
-        file: files.indexOf(square[0]),
-        rank: Number(square[1]),
-    };
-}
-
-function coordsToSquare(fileIndex, rank) {
-    return `${files[fileIndex]}${rank}`;
+function hasChessEngine() {
+    return typeof window.Chess === "function";
 }
 
 function squareColor(fileIndex, rankIndex) {
@@ -174,165 +137,15 @@ function makeSquare(fileIndex, rankIndex) {
     return `${files[fileIndex]}${8 - rankIndex}`;
 }
 
-function currentTurnColor() {
-    return chessState.turn;
-}
-
-function pathClear(fromSquare, toSquare, stepFile, stepRank) {
-    const from = squareToCoords(fromSquare);
-    const to = squareToCoords(toSquare);
-    let file = from.file + stepFile;
-    let rank = from.rank + stepRank;
-
-    while (file !== to.file || rank !== to.rank) {
-        if (chessPieceAt(coordsToSquare(file, rank))) {
-            return false;
-        }
-        file += stepFile;
-        rank += stepRank;
-    }
-
-    return true;
-}
-
-function generateLegalMovesFrom(board, square, piece) {
-    const from = squareToCoords(square);
-    const moves = [];
-    const direction = piece.c === "w" ? 1 : -1;
-    const startRank = piece.c === "w" ? 2 : 7;
-    const enemy = piece.c === "w" ? "b" : "w";
-
-    function pushIfValid(file, rank) {
-        if (!isInside(file, rank)) {
-            return;
-        }
-        const target = board[coordsToSquare(file, rank)];
-        if (!target || target.c !== piece.c) {
-            moves.push(coordsToSquare(file, rank));
-        }
-    }
-
-    if (piece.t === "p") {
-        const oneForward = from.rank + direction;
-        if (isInside(from.file, oneForward) && !board[coordsToSquare(from.file, oneForward)]) {
-            moves.push(coordsToSquare(from.file, oneForward));
-            const twoForward = from.rank + direction * 2;
-            if (from.rank === startRank && !board[coordsToSquare(from.file, twoForward)]) {
-                moves.push(coordsToSquare(from.file, twoForward));
-            }
-        }
-
-        [-1, 1].forEach((df) => {
-            const file = from.file + df;
-            const rank = from.rank + direction;
-            if (!isInside(file, rank)) {
-                return;
-            }
-            const target = board[coordsToSquare(file, rank)];
-            if (target && target.c === enemy) {
-                moves.push(coordsToSquare(file, rank));
-            }
-        });
-    }
-
-    if (piece.t === "n") {
-        [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]].forEach(([df, dr]) => {
-            pushIfValid(from.file + df, from.rank + dr);
-        });
-    }
-
-    if (piece.t === "b" || piece.t === "q") {
-        [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([df, dr]) => {
-            let file = from.file + df;
-            let rank = from.rank + dr;
-            while (isInside(file, rank)) {
-                const target = board[coordsToSquare(file, rank)];
-                if (!target) {
-                    moves.push(coordsToSquare(file, rank));
-                } else {
-                    if (target.c !== piece.c) {
-                        moves.push(coordsToSquare(file, rank));
-                    }
-                    break;
-                }
-                file += df;
-                rank += dr;
-            }
-        });
-    }
-
-    if (piece.t === "r" || piece.t === "q") {
-        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([df, dr]) => {
-            let file = from.file + df;
-            let rank = from.rank + dr;
-            while (isInside(file, rank)) {
-                const target = board[coordsToSquare(file, rank)];
-                if (!target) {
-                    moves.push(coordsToSquare(file, rank));
-                } else {
-                    if (target.c !== piece.c) {
-                        moves.push(coordsToSquare(file, rank));
-                    }
-                    break;
-                }
-                file += df;
-                rank += dr;
-            }
-        });
-    }
-
-    if (piece.t === "k") {
-        [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]].forEach(([df, dr]) => {
-            pushIfValid(from.file + df, from.rank + dr);
-        });
-    }
-
-    return moves;
-}
-
-function allLegalMoves(board, turn) {
-    const moves = [];
-    Object.keys(board).forEach((square) => {
-        const piece = board[square];
-        if (!piece || piece.c !== turn) {
-            return;
-        }
-        generateLegalMovesFrom(board, square, piece).forEach((target) => {
-            moves.push({ from: square, to: target, piece: piece.t, captured: board[target]?.t || null });
-        });
-    });
-    return moves;
-}
-
-function applyChessMove(board, fromSquare, toSquare) {
-    const nextBoard = cloneChessBoard(board);
-    const piece = nextBoard[fromSquare];
-    if (!piece) {
-        return null;
-    }
-    delete nextBoard[fromSquare];
-    nextBoard[toSquare] = { ...piece };
-    if (piece.t === "p") {
-        const rank = Number(toSquare[1]);
-        if ((piece.c === "w" && rank === 8) || (piece.c === "b" && rank === 1)) {
-            nextBoard[toSquare] = { c: piece.c, t: "q" };
-        }
-    }
-    return nextBoard;
-}
-
-function evaluateBoardMaterial(board) {
-    const values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-    let total = 0;
-    Object.values(board).forEach((piece) => {
-        const val = values[piece.t] || 0;
-        total += piece.c === "b" ? val : -val;
-    });
-    return total;
+function scoreMove(move) {
+    const capturedScore = move.captured ? (chessPieceValue[move.captured] || 0) * 5 : 0;
+    const promotionScore = move.promotion ? (chessPieceValue[move.promotion] || 0) * 2 : 0;
+    const centerBonus = ["d4", "d5", "e4", "e5"].includes(move.to) ? 1 : 0;
+    return capturedScore + promotionScore + centerBonus + randomInt(-1, 1);
 }
 
 function chooseChessBotMove() {
-    const moves = allLegalMoves(chessState.board, "b");
+    const moves = chessState.engine.moves({ verbose: true });
     if (!moves.length) {
         return null;
     }
@@ -340,11 +153,19 @@ function chooseChessBotMove() {
     let bestMove = moves[0];
     let bestScore = -Infinity;
     moves.forEach((move) => {
-        const nextBoard = applyChessMove(chessState.board, move.from, move.to);
-        if (!nextBoard) {
-            return;
+        let score = scoreMove(move);
+        if (move.flags.includes("k") || move.flags.includes("q")) {
+            score += 2;
         }
-        const score = evaluateBoardMaterial(nextBoard) + randomInt(-2, 2);
+
+        chessState.engine.move({ from: move.from, to: move.to, promotion: "q" });
+        if (chessState.engine.isCheckmate()) {
+            score += 1000;
+        } else if (chessState.engine.inCheck()) {
+            score += 3;
+        }
+        chessState.engine.undo();
+
         if (score > bestScore) {
             bestScore = score;
             bestMove = move;
@@ -362,6 +183,61 @@ function clearChessBotTimer() {
     chessBotMoveTimer = null;
 }
 
+function finishChessResult(outcome, statusMessage) {
+    chessResult.finished = true;
+    chessResult.outcome = outcome;
+    gameScore = outcome === "win" ? 1 : 0;
+    updateScoreInput();
+    setStatus(statusMessage);
+}
+
+function resolveChessGameState(afterBotMove = false) {
+    if (!chessState) {
+        return false;
+    }
+
+    if (chessState.engine.isCheckmate()) {
+        const winner = chessState.engine.turn() === "w" ? "b" : "w";
+        finishChessResult(
+            winner === "w" ? "win" : "loss",
+            winner === "w" ? "Checkmate. You win." : "Checkmate. Bot wins.",
+        );
+        return true;
+    }
+
+    if (chessState.engine.isStalemate()) {
+        finishChessResult("draw", "Draw by stalemate.");
+        return true;
+    }
+
+    if (chessState.engine.isInsufficientMaterial()) {
+        finishChessResult("draw", "Draw by insufficient material.");
+        return true;
+    }
+
+    if (chessState.engine.isThreefoldRepetition()) {
+        finishChessResult("draw", "Draw by repetition.");
+        return true;
+    }
+
+    if (chessState.engine.isDraw()) {
+        finishChessResult("draw", "Draw.");
+        return true;
+    }
+
+    if (chessState.engine.inCheck()) {
+        if (afterBotMove) {
+            setStatus("Your king is in check.");
+        } else {
+            setStatus("Bot king is in check.");
+        }
+        return false;
+    }
+
+    chessResult.finished = false;
+    return false;
+}
+
 function scheduleChessBotMove() {
     clearChessBotTimer();
     chessBotThinking = true;
@@ -370,7 +246,7 @@ function scheduleChessBotMove() {
     const delayMs = randomInt(1200, 2600);
     chessBotMoveTimer = setTimeout(() => {
         chessBotMoveTimer = null;
-        if (!chessState || chessState.turn !== "b") {
+        if (!chessState || chessState.engine.turn() !== "b" || chessResult.finished) {
             chessBotThinking = false;
             renderChessBoard();
             return;
@@ -378,29 +254,30 @@ function scheduleChessBotMove() {
 
         const botMove = chooseChessBotMove();
         if (botMove) {
-            chessState.board = applyChessMove(chessState.board, botMove.from, botMove.to) || chessState.board;
+            chessState.engine.move({ from: botMove.from, to: botMove.to, promotion: "q" });
         }
 
-        chessState.turn = "w";
         chessBotThinking = false;
+        resolveChessGameState(true);
         renderChessBoard();
     }, delayMs);
 }
 
 function chessStatusText() {
-    const legalWhite = allLegalMoves(chessState.board, "w");
-    const legalBlack = allLegalMoves(chessState.board, "b");
-
-    if (!legalWhite.length) {
-        return chessState.turn === "w" ? "No legal moves for White." : "Bot has no legal moves.";
+    if (!chessState) {
+        return "Chess not started.";
     }
 
-    if (!legalBlack.length) {
-        return chessState.turn === "b" ? "No legal moves for Black." : "You have no legal moves.";
+    if (chessResult.finished) {
+        return `Game over: ${chessResult.outcome}`;
     }
 
-    if (chessState.turn === "b") {
+    if (chessState.engine.turn() === "b") {
         return chessBotThinking ? "Bot is thinking..." : "Bot is preparing a move...";
+    }
+
+    if (chessState.engine.inCheck()) {
+        return "You are in check.";
     }
     return "Your move.";
 }
@@ -411,11 +288,12 @@ function renderChessBoard() {
     }
 
     chessBoardEl.innerHTML = "";
+    const boardRows = chessState.engine.board();
     for (let rank = 0; rank < 8; rank += 1) {
         for (let file = 0; file < 8; file += 1) {
             const square = makeSquare(file, rank);
-            const piece = chessState.board[square];
-            const key = piece ? `${piece.c}${piece.t}` : "";
+            const piece = boardRows[rank][file];
+            const key = piece ? `${piece.color}${piece.type}` : "";
             const button = document.createElement("button");
             button.type = "button";
             button.className = `sq ${squareColor(file, rank)}`;
@@ -433,13 +311,13 @@ function renderChessBoard() {
 }
 
 function onSquareClick(square) {
-    if (!chessState || chessState.turn !== "w") {
+    if (!chessState || chessState.engine.turn() !== "w" || chessResult.finished || chessBotThinking) {
         return;
     }
 
-    const piece = chessState.board[square];
+    const piece = chessState.engine.get(square);
     if (!selectedSquare) {
-        if (piece && piece.c === "w") {
+        if (piece && piece.color === "w") {
             selectedSquare = square;
             renderChessBoard();
         }
@@ -452,30 +330,41 @@ function onSquareClick(square) {
         return;
     }
 
-    const legalTargets = generateLegalMovesFrom(chessState.board, selectedSquare, chessState.board[selectedSquare] || { c: "w", t: "p" });
+    const legalTargets = chessState.engine.moves({ square: selectedSquare, verbose: true }).map((move) => move.to);
     if (!legalTargets.includes(square)) {
-        selectedSquare = piece && piece.c === "w" ? square : "";
+        selectedSquare = piece && piece.color === "w" ? square : "";
         renderChessBoard();
         return;
     }
 
-    chessState.board = applyChessMove(chessState.board, selectedSquare, square);
+    chessState.engine.move({ from: selectedSquare, to: square, promotion: "q" });
     selectedSquare = "";
-    gameScore += 1;
-    updateScoreInput();
 
-    chessState.turn = "b";
+    if (resolveChessGameState(false)) {
+        renderChessBoard();
+        return;
+    }
+
     scheduleChessBotMove();
 }
 
 function startChessGame() {
+    if (!hasChessEngine()) {
+        setStatus("Chess engine failed to load. Refresh the page.");
+        return false;
+    }
+
     clearChessBotTimer();
     chessState = {
-        board: buildInitialChessBoard(),
-        turn: "w",
+        engine: new window.Chess(),
     };
     chessBotThinking = false;
     selectedSquare = "";
+    chessResult = {
+        mode: "vs-bot",
+        outcome: "draw",
+        finished: false,
+    };
     gameScore = 0;
     updateScoreInput();
     renderChessBoard();
