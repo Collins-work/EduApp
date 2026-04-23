@@ -8,7 +8,7 @@ const games = [
     {
         id: "chess",
         title: "Chess Rush",
-        description: "Solve short tactical choices.",
+        description: "Play a full board game against a bot right inside Telegram.",
     },
     {
         id: "cards",
@@ -28,22 +28,6 @@ const games = [
 ];
 
 const roundsByGame = {
-    chess: [
-        {
-            prompt: "White to move: what wins material fastest?",
-            options: ["Develop a knight", "Take the hanging queen", "Castle short", "Push a pawn"],
-            correctIndex: 1,
-            points: 6,
-            explain: "Taking the free queen is the highest-value tactical move.",
-        },
-        {
-            prompt: "You can force checkmate in one. Best move?",
-            options: ["Deliver check immediately", "Trade queens", "Defend a pawn", "Retreat bishop"],
-            correctIndex: 0,
-            points: 6,
-            explain: "When mate is available, calculate and finish it.",
-        },
-    ],
     cards: [
         {
             prompt: "Which poker hand ranks highest?",
@@ -94,6 +78,23 @@ const roundsByGame = {
     ],
 };
 
+const pieceMap = {
+    wp: "♙",
+    wn: "♘",
+    wb: "♗",
+    wr: "♖",
+    wq: "♕",
+    wk: "♔",
+    bp: "♟",
+    bn: "♞",
+    bb: "♝",
+    br: "♜",
+    bq: "♛",
+    bk: "♚",
+};
+
+const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
 const params = new URLSearchParams(window.location.search);
 const requestedGameId = String(params.get("game") || "").toLowerCase().trim();
 
@@ -107,11 +108,17 @@ const roundLabel = document.getElementById("round-label");
 const gamePrompt = document.getElementById("game-prompt");
 const optionsRoot = document.getElementById("game-options");
 const nextRoundBtn = document.getElementById("next-round");
+const playPanel = document.querySelector(".play-panel");
+const chessPanel = document.getElementById("chess-panel");
+const chessBoardEl = document.getElementById("chess-board");
+const newChessGameBtn = document.getElementById("new-chess-game");
 
 let activeGameId = "";
 let roundIndex = 0;
 let gameScore = 0;
 let lockedRound = false;
+let chess = null;
+let selectedSquare = "";
 const cardById = new Map();
 
 function setStatus(message) {
@@ -133,6 +140,141 @@ function getCurrentRound() {
     }
 
     return pool[roundIndex % pool.length];
+}
+
+function squareColor(fileIndex, rankIndex) {
+    return (fileIndex + rankIndex) % 2 === 0 ? "dark" : "light";
+}
+
+function makeSquare(fileIndex, rankIndex) {
+    return `${files[fileIndex]}${8 - rankIndex}`;
+}
+
+function renderChessBoard() {
+    if (!chessBoardEl || !chess) {
+        return;
+    }
+
+    chessBoardEl.innerHTML = "";
+
+    for (let rank = 0; rank < 8; rank += 1) {
+        for (let file = 0; file < 8; file += 1) {
+            const square = makeSquare(file, rank);
+            const piece = chess.get(square);
+            const key = piece ? `${piece.color}${piece.type}` : "";
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `sq ${squareColor(file, rank)}`;
+            if (selectedSquare === square) {
+                button.classList.add("selected");
+            }
+            button.dataset.square = square;
+            button.textContent = key ? pieceMap[key] : "";
+
+            button.addEventListener("click", () => onSquareClick(square));
+            chessBoardEl.appendChild(button);
+        }
+    }
+}
+
+function playBotMove() {
+    if (!chess || chess.isGameOver() || chess.turn() !== "b") {
+        return;
+    }
+
+    const moves = chess.moves({ verbose: true });
+    if (!moves.length) {
+        return;
+    }
+
+    const picked = moves[Math.floor(Math.random() * moves.length)];
+    chess.move({ from: picked.from, to: picked.to, promotion: "q" });
+}
+
+function endStateMessage() {
+    if (!chess) {
+        return "";
+    }
+
+    if (chess.isCheckmate()) {
+        return chess.turn() === "w" ? "Checkmate. Bot wins." : "Checkmate. You win!";
+    }
+
+    if (chess.isStalemate()) {
+        return "Draw by stalemate.";
+    }
+
+    if (chess.isDraw()) {
+        return "Draw.";
+    }
+
+    if (chess.isCheck()) {
+        return chess.turn() === "w" ? "Your king is in check." : "Bot is in check.";
+    }
+
+    return "";
+}
+
+function onSquareClick(square) {
+    if (!chess || chess.turn() !== "w" || chess.isGameOver()) {
+        return;
+    }
+
+    const piece = chess.get(square);
+
+    if (!selectedSquare) {
+        if (piece && piece.color === "w") {
+            selectedSquare = square;
+            renderChessBoard();
+        }
+        return;
+    }
+
+    if (selectedSquare === square) {
+        selectedSquare = "";
+        renderChessBoard();
+        return;
+    }
+
+    const attempted = chess.move({ from: selectedSquare, to: square, promotion: "q" });
+
+    if (!attempted) {
+        if (piece && piece.color === "w") {
+            selectedSquare = square;
+        } else {
+            selectedSquare = "";
+        }
+        renderChessBoard();
+        return;
+    }
+
+    selectedSquare = "";
+    gameScore += 1;
+    if (attempted.captured) {
+        gameScore += 2;
+    }
+    updateScoreInput();
+
+    playBotMove();
+    renderChessBoard();
+
+    const summary = endStateMessage() || "Move made. Keep playing.";
+    setStatus(summary);
+}
+
+function startChessGame() {
+    if (typeof window.Chess !== "function") {
+        setStatus("Chess engine failed to load. Refresh this mini app.");
+        return;
+    }
+
+    chess = new window.Chess();
+    selectedSquare = "";
+    gameScore = 0;
+    updateScoreInput();
+    renderChessBoard();
+    setStatus("Chess started. You play White.");
 }
 
 function renderRound() {
@@ -187,6 +329,16 @@ function markActiveCard() {
     });
 }
 
+function setModeForGame() {
+    const isChess = activeGameId === "chess";
+    playPanel.classList.toggle("hidden", isChess);
+    chessPanel.classList.toggle("hidden", !isChess);
+
+    if (requestedGameId) {
+        document.body.classList.add("game-mode");
+    }
+}
+
 function selectGame(gameId) {
     const selected = games.find((game) => game.id === gameId);
     if (!selected) {
@@ -200,7 +352,15 @@ function selectGame(gameId) {
 
     activeGameTitle.textContent = selected.title;
     activeGameDescription.textContent = selected.description;
+
+    setModeForGame();
     markActiveCard();
+
+    if (selected.id === "chess") {
+        startChessGame();
+        return;
+    }
+
     renderRound();
 }
 
@@ -223,14 +383,22 @@ function buildGameCards() {
 }
 
 nextRoundBtn.addEventListener("click", () => {
-    if (!activeGameId) {
-        setStatus("Choose a game first.");
+    if (!activeGameId || activeGameId === "chess") {
+        setStatus("Choose a non-chess game first.");
         return;
     }
 
     roundIndex += 1;
     renderRound();
     setStatus("New round ready.");
+});
+
+newChessGameBtn.addEventListener("click", () => {
+    if (activeGameId !== "chess") {
+        return;
+    }
+
+    startChessGame();
 });
 
 submitBtn.addEventListener("click", () => {

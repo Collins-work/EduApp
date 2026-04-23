@@ -190,6 +190,52 @@ input,
   color: var(--good);
 }
 
+.hidden {
+  display: none;
+}
+
+.chess-wrap {
+  margin-top: 10px;
+}
+
+.chess-board {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.sq {
+  aspect-ratio: 1 / 1;
+  border: 0;
+  font-size: clamp(22px, 4vw, 34px);
+  cursor: pointer;
+  color: #10263a;
+}
+
+.sq.light {
+  background: #f0d9b5;
+}
+
+.sq.dark {
+  background: #b58863;
+}
+
+.sq.selected {
+  outline: 2px solid #ffd166;
+  outline-offset: -2px;
+}
+
+body.game-mode .top,
+body.game-mode #game-list {
+  display: none;
+}
+
+body.game-mode .hub {
+  width: min(820px, 96vw);
+}
+
 @media (max-width: 700px) {
   .grid {
     grid-template-columns: 1fr;
