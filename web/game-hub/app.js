@@ -119,7 +119,55 @@ let gameScore = 0;
 let lockedRound = false;
 let chess = null;
 let selectedSquare = "";
+let chessReady = false;
 const cardById = new Map();
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+            if (typeof window.Chess === "function") {
+                resolve();
+                return;
+            }
+
+            existing.addEventListener("load", () => resolve(), { once: true });
+            existing.addEventListener("error", () => reject(new Error(`Failed script: ${src}`)), { once: true });
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed script: ${src}`));
+        document.head.appendChild(script);
+    });
+}
+
+async function ensureChessEngine() {
+    if (typeof window.Chess === "function") {
+        return true;
+    }
+
+    const candidates = [
+        "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/chess.min.js",
+        "https://unpkg.com/chess.js@1.4.0/dist/chess.min.js",
+    ];
+
+    for (const src of candidates) {
+        try {
+            await loadScript(src);
+            if (typeof window.Chess === "function") {
+                return true;
+            }
+        } catch (_error) {
+            // Try next CDN.
+        }
+    }
+
+    return false;
+}
 
 function setStatus(message) {
     statusText.textContent = message;
@@ -263,10 +311,11 @@ function onSquareClick(square) {
     setStatus(summary);
 }
 
-function startChessGame() {
-    if (typeof window.Chess !== "function") {
-        setStatus("Chess engine failed to load. Refresh this mini app.");
-        return;
+async function startChessGame() {
+    chessReady = await ensureChessEngine();
+    if (!chessReady || typeof window.Chess !== "function") {
+        setStatus("Chess engine failed to load in Telegram WebView. Try re-opening the mini app.");
+        return false;
     }
 
     chess = new window.Chess();
@@ -275,6 +324,7 @@ function startChessGame() {
     updateScoreInput();
     renderChessBoard();
     setStatus("Chess started. You play White.");
+    return true;
 }
 
 function renderRound() {
@@ -339,10 +389,10 @@ function setModeForGame() {
     }
 }
 
-function selectGame(gameId) {
+async function selectGame(gameId) {
     const selected = games.find((game) => game.id === gameId);
     if (!selected) {
-        return;
+        return false;
     }
 
     activeGameId = selected.id;
@@ -357,11 +407,11 @@ function selectGame(gameId) {
     markActiveCard();
 
     if (selected.id === "chess") {
-        startChessGame();
-        return;
+        return startChessGame();
     }
 
     renderRound();
+    return true;
 }
 
 function buildGameCards() {
@@ -376,7 +426,9 @@ function buildGameCards() {
       <button class="btn">Play In Telegram</button>
     `;
 
-        card.querySelector("button").addEventListener("click", () => selectGame(game.id));
+        card.querySelector("button").addEventListener("click", () => {
+            void selectGame(game.id);
+        });
         listRoot.appendChild(card);
         cardById.set(game.id, card);
     });
@@ -398,7 +450,7 @@ newChessGameBtn.addEventListener("click", () => {
         return;
     }
 
-    startChessGame();
+    void startChessGame();
 });
 
 submitBtn.addEventListener("click", () => {
@@ -421,8 +473,11 @@ submitBtn.addEventListener("click", () => {
 
 buildGameCards();
 if (requestedGameId && games.some((game) => game.id === requestedGameId)) {
-    selectGame(requestedGameId);
-    setStatus(`Loaded ${requestedGameId} from bot command.`);
+    void selectGame(requestedGameId).then((ok) => {
+        if (ok) {
+            setStatus(`Loaded ${requestedGameId} from bot command.`);
+        }
+    });
 } else {
     setStatus("Select a game card to start playing.");
 }

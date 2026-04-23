@@ -196,6 +196,8 @@ input,
 
 .chess-wrap {
   margin-top: 10px;
+  display: flex;
+  justify-content: center;
 }
 
 .chess-board {
@@ -204,12 +206,14 @@ input,
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
+  width: min(96vw, 620px);
+  max-width: 100%;
 }
 
 .sq {
   aspect-ratio: 1 / 1;
   border: 0;
-  font-size: clamp(22px, 4vw, 34px);
+  font-size: clamp(26px, 5.6vw, 44px);
   cursor: pointer;
   color: #10263a;
 }
@@ -233,7 +237,7 @@ body.game-mode #game-list {
 }
 
 body.game-mode .hub {
-  width: min(820px, 96vw);
+  width: min(980px, 98vw);
 }
 
 @media (max-width: 700px) {
