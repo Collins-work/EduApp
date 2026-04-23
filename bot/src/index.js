@@ -38,6 +38,7 @@ if (!ADMIN_ID) {
 
 const bot = new Telegraf(BOT_TOKEN);
 const pendingQuizByChat = new Map();
+const pendingFlashcardByUser = new Map();
 
 function isAdmin(ctx) {
   return Number(ctx.from?.id) === ADMIN_ID;
@@ -78,6 +79,17 @@ function formatQuizPrompt(quiz) {
   }
   lines.push("Reply with your answer in chat.");
   return lines.join("\n");
+}
+
+function formatFlashcardPrompt(question) {
+  return [
+    `Flashcard question saved: ${question}`,
+    "Now send the answer for this flashcard.",
+  ].join("\n");
+}
+
+function isPrivateChat(ctx) {
+  return ctx.chat?.type === "private";
 }
 
 function eduAppButtons() {
@@ -128,11 +140,13 @@ bot.command("help", async (ctx) => {
       "",
       "Admin Commands:",
       "/addcard question|answer",
+      "/newcard - Create a flashcard in a private chat",
       "/addquiz question|answer",
       "/addgame name|url",
       "/removegame name",
       "/resetquiz",
       "/resetleaderboard",
+      "/cancelcard - Cancel a pending private flashcard",
     ].join("\n"),
   );
 });
@@ -217,6 +231,34 @@ bot.command("addcard", async (ctx) => {
 
   const created = addFlashcard(payload.left, payload.right);
   await ctx.reply(`Flashcard added: ${created.question}`);
+});
+
+bot.command("newcard", async (ctx) => {
+  if (!requireAdmin(ctx)) {
+    return;
+  }
+
+  if (!isPrivateChat(ctx)) {
+    await ctx.reply("Please use /newcard in a private chat with the bot.");
+    return;
+  }
+
+  pendingFlashcardByUser.set(ctx.from.id, {
+    stage: "question",
+  });
+
+  await ctx.reply("Send the flashcard question.");
+});
+
+bot.command("cancelcard", async (ctx) => {
+  if (!requireAdmin(ctx)) {
+    return;
+  }
+
+  const removed = pendingFlashcardByUser.delete(ctx.from.id);
+  await ctx.reply(
+    removed ? "Pending flashcard creation canceled." : "No pending flashcard creation found.",
+  );
 });
 
 bot.command("addquiz", async (ctx) => {
@@ -373,6 +415,30 @@ bot.on("message", async (ctx, next) => {
   }
 
   const text = ctx.message?.text;
+  const pendingFlashcard = pendingFlashcardByUser.get(ctx.from?.id);
+  if (pendingFlashcard && typeof text === "string" && !text.startsWith("/")) {
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      await ctx.reply("Please send a non-empty message.");
+      return;
+    }
+
+    if (pendingFlashcard.stage === "question") {
+      pendingFlashcard.question = trimmedText;
+      pendingFlashcard.stage = "answer";
+      pendingFlashcardByUser.set(ctx.from.id, pendingFlashcard);
+      await ctx.reply(formatFlashcardPrompt(trimmedText));
+      return;
+    }
+
+    if (pendingFlashcard.stage === "answer") {
+      const created = addFlashcard(pendingFlashcard.question, trimmedText);
+      pendingFlashcardByUser.delete(ctx.from.id);
+      await ctx.reply(`Flashcard added: ${created.question}`);
+      return;
+    }
+  }
+
   if (typeof text === "string" && !text.startsWith("/")) {
     const active = pendingQuizByChat.get(ctx.chat.id);
     if (!active) {
@@ -405,10 +471,12 @@ bot.catch((error, ctx) => {
   await bot.telegram.setMyCommands([
     { command: "quiz", description: "Ask quiz question" },
     { command: "flashcard", description: "Show flashcard" },
+    { command: "newcard", description: "Create flashcard in private chat" },
     { command: "playgame", description: "Open game hub" },
     { command: "leaderboard", description: "Quiz leaderboard" },
     { command: "gameleaderboard", description: "Game leaderboard" },
     { command: "syncstudy", description: "Sync study source file" },
+    { command: "cancelcard", description: "Cancel flashcard creation" },
     { command: "help", description: "Show all commands" },
   ]);
 

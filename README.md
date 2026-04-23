@@ -63,11 +63,15 @@ Add bot to group as a member, then use:
 Admin-only commands (must match `ADMIN_ID`):
 
 - `/addcard question|answer`
+- `/newcard` in a private chat to create a flashcard step-by-step
 - `/addquiz question|answer`
 - `/resetquiz`
 - `/addgame name|url`
 - `/removegame name`
 - `/resetleaderboard`
+- `/cancelcard` to stop a pending private flashcard setup
+
+Flashcards created this way are saved to `bot/data/flashcards.json`, so `/flashcard` in group chat will use them immediately.
 
 ## 5) Mini App Result Flow
 
@@ -80,7 +84,7 @@ Bot receives this as `web_app_data` and posts leaderboard updates back to chat.
 
 ## 6) Optional Content Import
 
-NotebookLM does not expose a public bot-friendly API, so the bot links to it through an export/sync file. The supported workflow is:
+NotebookLM does not expose a public bot-friendly API, so the bot links to it through an export/sync file. If you do not want to use that flow, the admin can create flashcards manually in a private chat with `/newcard`. The supported NotebookLM workflow is still:
 
 1. Export your NotebookLM study notes, or copy them into a Google Doc/Markdown file.
 2. Format lines like `Card: question | answer` and `Quiz: question | answer; synonym1; synonym2`.
