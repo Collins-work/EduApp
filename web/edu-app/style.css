@@ -1,0 +1,171 @@
+:root {
+  --bg: #f2efe9;
+  --ink: #13293d;
+  --card: #fffdf7;
+  --muted: #57606f;
+  --primary: #007c77;
+  --accent: #f25f5c;
+  --line: #d8d1c7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 20% 20%, #fff8df 0%, #f2efe9 55%, #e7e3dc 100%);
+  overflow-x: hidden;
+}
+
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(to right, rgba(19, 41, 61, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(19, 41, 61, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+.app-shell {
+  width: min(900px, 94vw);
+  margin: 28px auto 40px;
+  display: grid;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 12px 30px rgba(19, 41, 61, 0.08);
+  transform: translateY(14px);
+  opacity: 0;
+  animation: rise 500ms ease forwards;
+}
+
+.panel:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.panel:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.panel:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+@keyframes rise {
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+h1,
+h2 {
+  margin: 6px 0 10px;
+}
+
+.subtitle,
+.feedback {
+  color: var(--muted);
+}
+
+.question {
+  font-size: 1.1rem;
+  margin: 0 0 8px;
+}
+
+.answer {
+  margin: 0 0 10px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.hidden {
+  display: none;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  border: 1px solid var(--ink);
+  background: transparent;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  width: 100%;
+}
+
+.btn-ghost:hover,
+.btn-primary:hover,
+.btn-accent:hover {
+  filter: brightness(1.05);
+}
+
+.choices {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.choice-pill {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f9f4ec;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 8px 0 10px;
+  font-size: 1rem;
+}
+
+@media (max-width: 700px) {
+  .app-shell {
+    margin-top: 14px;
+  }
+
+  .panel {
+    border-radius: 16px;
+    padding: 14px;
+  }
+}

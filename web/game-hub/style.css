@@ -1,0 +1,113 @@
+:root {
+  --bg0: #07131f;
+  --bg1: #11273a;
+  --card: #152d43;
+  --line: #2d4d68;
+  --text: #f6f6ef;
+  --muted: #b4bfcd;
+  --accent: #ffb703;
+  --good: #06d6a0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: "Bricolage Grotesque", sans-serif;
+  background: linear-gradient(130deg, var(--bg0), var(--bg1));
+}
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 20% 10%, rgba(255, 183, 3, 0.22), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(6, 214, 160, 0.2), transparent 40%);
+}
+
+.hub {
+  width: min(980px, 94vw);
+  margin: 20px auto 36px;
+  position: relative;
+  z-index: 1;
+}
+
+.tag {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0 0 8px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card), #000 5%);
+  border-radius: 16px;
+  padding: 14px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: reveal 500ms ease forwards;
+}
+
+.card p {
+  color: var(--muted);
+}
+
+.card .btn {
+  width: 100%;
+}
+
+@keyframes reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.score-panel {
+  margin-top: 16px;
+  background: rgba(5, 10, 18, 0.35);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+input,
+.btn {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0f2233;
+  color: var(--text);
+  padding: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.btn {
+  background: var(--accent);
+  color: #0a1a2a;
+  border-color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.status {
+  min-height: 20px;
+  color: var(--good);
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "chess",
+    "title": "Chess",
+    "url": "https://example.com/chess"
+  },
+  {
+    "name": "cards",
+    "title": "Cards",
+    "url": "https://example.com/cards"
+  },
+  {
+    "name": "trivia",
+    "title": "Trivia Battle",
+    "url": "https://example.com/trivia"
+  },
+  {
+    "name": "strategy",
+    "title": "Strategy Builder",
+    "url": "https://example.com/strategy"
+  }
+]

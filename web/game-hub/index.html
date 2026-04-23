@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+    <div class="aurora" aria-hidden="true"></div>
+    <main class="hub">
+        <header class="top">
+            <p class="tag">Mini Games</p>
+            <h1>Game Hub Dashboard</h1>
+            <p>Launch quick games and send results back into your Telegram group.</p>
+        </header>
+
+        <section id="game-list" class="grid"></section>
+
+        <section class="score-panel">
+            <label for="score-input">Score to submit</label>
+            <input id="score-input" type="number" min="0" value="5" />
+            <button id="submit-game-score" class="btn">Submit To Group</button>
+            <p id="status" class="status"></p>
+        </section>
+    </main>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="./app.js"></script>
+</body>
+
+</html>

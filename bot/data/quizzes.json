@@ -1,0 +1,28 @@
+[
+    {
+        "question": "Capital of France?",
+        "answer": "paris",
+        "synonyms": [
+            "city of light"
+        ],
+        "choices": [
+            "Paris",
+            "Berlin",
+            "Madrid",
+            "Rome"
+        ]
+    },
+    {
+        "question": "Which planet is known as the Red Planet?",
+        "answer": "mars",
+        "synonyms": [
+            "the red planet"
+        ],
+        "choices": [
+            "Earth",
+            "Mars",
+            "Venus",
+            "Jupiter"
+        ]
+    }
+]
