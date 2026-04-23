@@ -19,10 +19,27 @@
         <header class="top">
             <p class="tag">Mini Games</p>
             <h1>Game Hub Dashboard</h1>
-            <p>Launch quick games and send results back into your Telegram group.</p>
+            <p>Pick a game, play a fast challenge, and send your score back into Telegram.</p>
         </header>
 
         <section id="game-list" class="grid"></section>
+
+        <section class="play-panel">
+            <p class="tag">Now Playing</p>
+            <h2 id="active-game-title">Choose a game</h2>
+            <p id="active-game-description" class="muted">Select any card above to play inside Telegram.</p>
+
+            <div class="question-box">
+                <p id="round-label" class="round-label">Round not started</p>
+                <p id="game-prompt" class="prompt">Tap a game card to begin.</p>
+            </div>
+
+            <div id="game-options" class="options"></div>
+
+            <div class="play-actions">
+                <button id="next-round" class="btn secondary">Next Round</button>
+            </div>
+        </section>
 
         <section class="score-panel">
             <label for="score-input">Score to submit</label>

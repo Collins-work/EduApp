@@ -99,6 +99,36 @@ function formatQuizPromptForCreation(question) {
   ].join("\n");
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderFlashcardMessage(question, count) {
+  return [
+    "<b>Flashcard Practice</b>",
+    count ? `<i>Total cards: ${count}</i>` : "",
+    "",
+    `<b>Question</b>: ${escapeHtml(question)}`,
+    "",
+    "Tap <b>Show Answer</b> when you are ready.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function flashcardKeyboard(answer) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("Reveal Answer", `show_answer|${answer}`)],
+    [Markup.button.callback("Next Flashcard", "next_card")],
+    [Markup.button.webApp("Open Edu Mini App", getEduAppUrl())],
+  ]);
+}
+
 function isPrivateChat(ctx) {
   return ctx.chat?.type === "private";
 }
@@ -123,8 +153,20 @@ function eduAppButtons() {
 
 function gameHubButtons() {
   return Markup.inlineKeyboard([
-    Markup.button.webApp("Open Game Hub", GAME_HUB_URL),
+    Markup.button.webApp("Open Game Hub", getGameHubUrl()),
   ]);
+}
+
+function getGameHubUrl(gameName) {
+  try {
+    const url = new URL(GAME_HUB_URL);
+    if (gameName) {
+      url.searchParams.set("game", gameName);
+    }
+    return url.toString();
+  } catch (_error) {
+    return GAME_HUB_URL;
+  }
 }
 
 function gameListKeyboard() {
@@ -134,7 +176,7 @@ function gameListKeyboard() {
   }
 
   const rows = games.map((game) => [
-    Markup.button.url(`Play ${game.title}`, game.url),
+    Markup.button.webApp(`Play ${game.title}`, getGameHubUrl(game.name)),
   ]);
 
   return Markup.inlineKeyboard(rows);
@@ -145,7 +187,7 @@ bot.start(async (ctx) => {
     "Edu Game Bot is ready for group learning and fun. Use /quiz, /flashcard, /playgame.",
     Markup.keyboard([
       [Markup.button.webApp("Launch Edu Mini App", getEduAppUrl())],
-      [Markup.button.webApp("Launch Game Hub", GAME_HUB_URL)],
+      [Markup.button.webApp("Launch Game Hub", getGameHubUrl())],
     ]).resize(),
   );
 });
@@ -203,12 +245,11 @@ bot.command("flashcard", async (ctx) => {
 
   const picked = cards[Math.floor(Math.random() * cards.length)];
   await ctx.reply(
-    `Flashcard: ${picked.question}`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback("Show Answer", `show_answer|${picked.answer}`)],
-      [Markup.button.callback("Next Card", "next_card")],
-      [Markup.button.webApp("Open Edu Mini App", getEduAppUrl())],
-    ]),
+    renderFlashcardMessage(picked.question, cards.length),
+    {
+      ...flashcardKeyboard(picked.answer),
+      parse_mode: "HTML",
+    },
   );
 });
 
@@ -221,12 +262,11 @@ bot.action("next_card", async (ctx) => {
 
   const picked = cards[Math.floor(Math.random() * cards.length)];
   await ctx.editMessageText(
-    `Flashcard: ${picked.question}`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback("Show Answer", `show_answer|${picked.answer}`)],
-      [Markup.button.callback("Next Card", "next_card")],
-      [Markup.button.webApp("Open Edu Mini App", getEduAppUrl())],
-    ]),
+    renderFlashcardMessage(picked.question, cards.length),
+    {
+      ...flashcardKeyboard(picked.answer),
+      parse_mode: "HTML",
+    },
   );
   await ctx.answerCbQuery();
 });
@@ -234,7 +274,7 @@ bot.action("next_card", async (ctx) => {
 bot.action(/show_answer\|(.+)/, async (ctx) => {
   const answer = ctx.match[1] || "(no answer)";
   await ctx.answerCbQuery();
-  await ctx.reply(`Answer: ${answer}`);
+  await ctx.reply(`<b>Answer</b>: ${escapeHtml(answer)}`, { parse_mode: "HTML" });
 });
 
 bot.command("leaderboard", async (ctx) => {
@@ -413,8 +453,8 @@ bot.command("playgame", async (ctx) => {
     await ctx.reply(
       `Launching ${game.title}`,
       Markup.inlineKeyboard([
-        [Markup.button.url(`Open ${game.title}`, game.url)],
-        [Markup.button.webApp("Open Game Hub", GAME_HUB_URL)],
+        [Markup.button.webApp(`Play ${game.title}`, getGameHubUrl(game.name))],
+        [Markup.button.webApp("Open Game Hub", getGameHubUrl())],
       ]),
     );
   });

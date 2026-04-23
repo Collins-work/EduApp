@@ -73,6 +73,11 @@ h1 {
   width: 100%;
 }
 
+.card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(255, 183, 3, 0.5);
+}
+
 @keyframes reveal {
   to {
     opacity: 1;
@@ -86,6 +91,79 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 14px;
+}
+
+.play-panel {
+  margin-top: 16px;
+  background: rgba(5, 10, 18, 0.35);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.play-panel h2 {
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.question-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(15, 34, 51, 0.7);
+}
+
+.round-label {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.prompt {
+  margin: 8px 0 0;
+  font-size: 1.05rem;
+}
+
+.options {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.option-btn {
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0f2233;
+  color: var(--text);
+  padding: 10px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.option-btn.correct {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.option-btn.wrong {
+  border-color: #ff6b6b;
+  color: #ff8d8d;
+}
+
+.play-actions {
+  margin-top: 10px;
+}
+
+.btn.secondary {
+  background: #12324a;
+  color: var(--text);
+  border-color: var(--line);
 }
 
 input,
@@ -110,4 +188,10 @@ input,
 .status {
   min-height: 20px;
   color: var(--good);
+}
+
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
