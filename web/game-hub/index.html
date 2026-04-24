@@ -43,14 +43,19 @@ Codeium
         <section id="chess-panel" class="play-panel hidden" aria-live="polite">
             <p class="tag">Chess GUI</p>
             <h2>Play Chess In Mini App</h2>
-            <p class="muted">You are White. Tap a piece, then tap destination square.</p>
+            <p class="muted" id="chess-mode-info">You are White. Tap a piece, then tap destination square.</p>
+
+            <div style="margin-bottom: 16px;">
+                <button id="chess-mode-vs-bot" class="btn secondary" style="margin-right: 8px;">vs Bot</button>
+                <button id="chess-mode-2player" class="btn secondary">2-Player</button>
+            </div>
 
             <div class="chess-wrap">
                 <div id="chess-board" class="chess-board"></div>
             </div>
 
             <div class="play-actions">
-                <button id="new-chess-game" class="btn secondary">New Chess Game</button>
+                <button id="new-chess-game" class="btn secondary">New Game</button>
             </div>
         </section>
 
@@ -63,7 +68,7 @@ Codeium
     </main>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0/dist/chess.js"></script>
+    <script src="./chess.js"></script>
     <script src="./app.js"></script>
 </body>
 

@@ -87,6 +87,8 @@ let selectedSquare = "";
 let chessState = null;
 let chessBotMoveTimer = null;
 let chessBotThinking = false;
+let chessMode = "vs-bot"; // "vs-bot" or "2-player"
+let currentChessPlayer = "white"; // for 2-player mode
 let chessResult = {
     mode: "vs-bot",
     outcome: "draw",
@@ -243,7 +245,7 @@ function scheduleChessBotMove() {
     chessBotThinking = true;
     renderChessBoard();
 
-    const delayMs = randomInt(1200, 2600);
+    const delayMs = randomInt(3000, 5000);
     chessBotMoveTimer = setTimeout(() => {
         chessBotMoveTimer = null;
         if (!chessState || chessState.engine.turn() !== "b" || chessResult.finished) {
@@ -270,6 +272,14 @@ function chessStatusText() {
 
     if (chessResult.finished) {
         return `Game over: ${chessResult.outcome}`;
+    }
+
+    if (chessMode === "2-player") {
+        const playerName = chessState.engine.turn() === "w" ? "White" : "Black";
+        if (chessState.engine.inCheck()) {
+            return `${playerName} is in check! ${playerName}'s move.`;
+        }
+        return `${playerName}'s move.`;
     }
 
     if (chessState.engine.turn() === "b") {
@@ -311,13 +321,24 @@ function renderChessBoard() {
 }
 
 function onSquareClick(square) {
-    if (!chessState || chessState.engine.turn() !== "w" || chessResult.finished || chessBotThinking) {
+    if (!chessState || chessResult.finished) {
         return;
+    }
+
+    // In vs-bot mode, only allow white (user) to move, and only when it's their turn
+    if (chessMode === "vs-bot") {
+        if (chessState.engine.turn() !== "w" || chessBotThinking) {
+            return;
+        }
+    }
+    // In 2-player mode, allow either player to move when it's their turn
+    else if (chessMode === "2-player") {
+        // Allow both white and black to move
     }
 
     const piece = chessState.engine.get(square);
     if (!selectedSquare) {
-        if (piece && piece.color === "w") {
+        if (piece && piece.color === chessState.engine.turn()) {
             selectedSquare = square;
             renderChessBoard();
         }
@@ -332,7 +353,7 @@ function onSquareClick(square) {
 
     const legalTargets = chessState.engine.moves({ square: selectedSquare, verbose: true }).map((move) => move.to);
     if (!legalTargets.includes(square)) {
-        selectedSquare = piece && piece.color === "w" ? square : "";
+        selectedSquare = piece && piece.color === chessState.engine.turn() ? square : "";
         renderChessBoard();
         return;
     }
@@ -345,28 +366,46 @@ function onSquareClick(square) {
         return;
     }
 
-    scheduleChessBotMove();
+    // In 2-player mode, just continue; in vs-bot, schedule bot move
+    if (chessMode === "vs-bot") {
+        scheduleChessBotMove();
+    } else if (chessMode === "2-player") {
+        renderChessBoard();
+    }
 }
 
-function startChessGame() {
+function startChessGame(mode = "vs-bot") {
     if (!hasChessEngine()) {
         setStatus("Chess engine failed to load. Refresh the page.");
         return false;
     }
 
     clearChessBotTimer();
+    chessMode = mode;
     chessState = {
         engine: new window.Chess(),
     };
     chessBotThinking = false;
     selectedSquare = "";
+    currentChessPlayer = "white";
     chessResult = {
-        mode: "vs-bot",
+        mode: mode,
         outcome: "draw",
         finished: false,
     };
     gameScore = 0;
     updateScoreInput();
+
+    // Update mode info text
+    const modeInfo = document.getElementById("chess-mode-info");
+    if (modeInfo) {
+        if (mode === "2-player") {
+            modeInfo.textContent = "White starts. Take turns. Tap a piece, then tap destination square.";
+        } else {
+            modeInfo.textContent = "You are White. Tap a piece, then tap destination square.";
+        }
+    }
+
     renderChessBoard();
     return true;
 }
@@ -686,9 +725,24 @@ function buildGameCards() {
 
 newChessGameBtn.addEventListener("click", () => {
     if (activeGameId === "chess") {
-        startChessGame();
+        startChessGame(chessMode);
     }
 });
+
+const chessModeVsBotBtn = document.getElementById("chess-mode-vs-bot");
+const chessMode2PlayerBtn = document.getElementById("chess-mode-2player");
+
+if (chessModeVsBotBtn) {
+    chessModeVsBotBtn.addEventListener("click", () => {
+        startChessGame("vs-bot");
+    });
+}
+
+if (chessMode2PlayerBtn) {
+    chessMode2PlayerBtn.addEventListener("click", () => {
+        startChessGame("2-player");
+    });
+}
 
 submitBtn.addEventListener("click", () => {
     const score = Number(scoreInput.value || 0);
@@ -696,7 +750,7 @@ submitBtn.addEventListener("click", () => {
     const payload = {
         type: "game_result",
         game: activeGameId || "unknown",
-        mode: isChess ? "vs-bot" : "mini-app",
+        mode: isChess ? chessMode : "mini-app",
         score: isChess ? 0 : score,
         outcome: isChess ? chessResult.outcome : "draw",
         sentAt: new Date().toISOString(),
